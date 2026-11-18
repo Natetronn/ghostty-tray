@@ -1,0 +1,118 @@
+{
+	"folders": [
+		{ "path": "." }
+	],
+	"settings": {
+		// System Python: it has PyQt6 and dbus-python, and it is what the shebang uses.
+		"python.defaultInterpreterPath": "/usr/bin/python3",
+		"python.analysis.typeCheckingMode": "basic",
+		"[python]": {
+			"editor.defaultFormatter": "ms-python.black-formatter",
+			"editor.rulers": [100]
+		},
+		"black-formatter.args": ["--line-length=100"],
+		"[shellscript]": {
+			"editor.defaultFormatter": "foxundermoon.shell-format"
+		},
+		"files.associations": {
+			"*.service": "systemd-unit-file",
+			"**/profiles/*": "properties"
+		},
+		"files.exclude": {
+			"**/__pycache__": true
+		}
+	},
+	"extensions": {
+		"recommendations": [
+			"ms-python.python",
+			"ms-python.vscode-pylance",
+			"ms-python.debugpy",
+			"ms-python.black-formatter",
+			"coolbear.systemd-unit-file",
+			"foxundermoon.shell-format"
+		]
+	},
+	"launch": {
+		"version": "0.2.0",
+		"configurations": [
+			{
+				"name": "Tray: debug (sandbox config)",
+				"type": "debugpy",
+				"request": "launch",
+				"program": "${workspaceFolder}/ghostty-tray.py",
+				"python": "/usr/bin/python3",
+				"console": "integratedTerminal",
+				// Profiles and settings live in .dev-config/, not ~/.config.
+				"env": { "XDG_CONFIG_HOME": "${workspaceFolder}/.dev-config" },
+				"preLaunchTask": "Dev: prepare sandbox"
+			},
+			{
+				"name": "Tray: debug (real config)",
+				"type": "debugpy",
+				"request": "launch",
+				"program": "${workspaceFolder}/ghostty-tray.py",
+				"python": "/usr/bin/python3",
+				"console": "integratedTerminal",
+				"preLaunchTask": "Service: stop"
+			}
+		]
+	},
+	"tasks": {
+		"version": "2.0.0",
+		"tasks": [
+			{
+				"label": "Install (and restart service)",
+				"type": "shell",
+				"command": "./install.sh",
+				"problemMatcher": []
+			},
+			{
+				"label": "Uninstall",
+				"type": "shell",
+				"command": "./uninstall.sh",
+				"problemMatcher": []
+			},
+			{
+				"label": "Service: restart",
+				"type": "shell",
+				"command": "systemctl --user restart ghostty-tray.service && systemctl --user --no-pager status ghostty-tray.service",
+				"problemMatcher": []
+			},
+			{
+				"label": "Service: stop",
+				"type": "shell",
+				// The tray is single-instance, so a debug run needs the service stopped.
+				"command": "systemctl --user stop ghostty-tray.service 2>/dev/null; true",
+				"presentation": { "reveal": "silent" },
+				"problemMatcher": []
+			},
+			{
+				"label": "Service: follow logs",
+				"type": "shell",
+				"command": "journalctl --user -u ghostty-tray.service -f -n 50",
+				"isBackground": true,
+				"problemMatcher": []
+			},
+			{
+				"label": "Dev: prepare sandbox",
+				"type": "shell",
+				"command": "systemctl --user stop ghostty-tray.service 2>/dev/null; mkdir -p .dev-config/ghostty/profiles && cp -n examples/profiles/* .dev-config/ghostty/profiles/",
+				"presentation": { "reveal": "silent" },
+				"problemMatcher": []
+			},
+			{
+				"label": "Ghostty: validate config + profiles",
+				"type": "shell",
+				"command": "ghostty +validate-config && echo 'main config: ok'; for f in ~/.config/ghostty/profiles/*; do [ -f \"$f\" ] && ghostty +validate-config --config-file=\"$f\" && echo \"$(basename \"$f\"): ok\"; done",
+				"problemMatcher": []
+			},
+			{
+				"label": "Ghostty: toggle quick terminal",
+				"type": "shell",
+				"command": "gdbus call --session --dest com.mitchellh.ghostty --object-path /com/mitchellh/ghostty --method org.gtk.Actions.Activate toggle-quick-terminal '[]' '{}'",
+				"presentation": { "reveal": "silent" },
+				"problemMatcher": []
+			}
+		]
+	}
+}

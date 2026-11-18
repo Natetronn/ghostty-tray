@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Ghostty Tray
+GenericName=Terminal Launcher
+Comment=System tray launcher for Ghostty with profiles
+Exec=systemctl --user start ghostty-tray.service
+Icon=com.mitchellh.ghostty
+Terminal=false
+StartupNotify=false
+Categories=System;TerminalEmulator;
+Keywords=ghostty;tray;terminal;profile;

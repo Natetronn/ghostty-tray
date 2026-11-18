@@ -1,0 +1,4 @@
+__pycache__/
+*.pyc
+# Sandbox config used by the VS Code "sandbox config" debug launch
+.dev-config/
