@@ -4,3 +4,8 @@ __pycache__/
 .dev-config/
 # Generated from ghostty-tray.service.in by make
 ghostty-tray.service
+# makepkg output
+packaging/aur/*.tar.gz
+packaging/aur/*.pkg.tar.*
+packaging/aur/src/
+packaging/aur/pkg/
