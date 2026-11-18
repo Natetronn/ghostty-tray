@@ -73,7 +73,8 @@
 			{
 				"label": "Tray: restart",
 				"type": "shell",
-				"command": "pkill -f 'bin/ghostty-tray'; sleep 0.5; setsid -f ghostty-tray >/dev/null 2>&1",
+				// Through the autostart unit when there is one, so output goes to the journal.
+				"command": "pkill -f '[b]in/ghostty-tray'; sleep 0.5; systemctl --user start 'app-ghostty\\x2dtray@autostart.service' 2>/dev/null || setsid -f ghostty-tray >/dev/null 2>&1",
 				"presentation": { "reveal": "silent" },
 				"problemMatcher": []
 			},
@@ -81,7 +82,8 @@
 				"label": "Tray: stop",
 				"type": "shell",
 				// The tray is single-instance, so a debug run needs the installed one stopped.
-				"command": "pkill -f 'bin/ghostty-tray'; true",
+				// [b] keeps pkill from matching this task's own shell.
+				"command": "pkill -f '[b]in/ghostty-tray'; true",
 				"presentation": { "reveal": "silent" },
 				"problemMatcher": []
 			},
@@ -95,7 +97,7 @@
 			{
 				"label": "Dev: prepare sandbox",
 				"type": "shell",
-				"command": "pkill -f 'bin/ghostty-tray'; mkdir -p .dev-config/ghostty/profiles && cp -n examples/profiles/* .dev-config/ghostty/profiles/",
+				"command": "pkill -f '[b]in/ghostty-tray'; mkdir -p .dev-config/ghostty/profiles && cp -n examples/profiles/* .dev-config/ghostty/profiles/",
 				"presentation": { "reveal": "silent" },
 				"problemMatcher": []
 			},
