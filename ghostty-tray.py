@@ -43,7 +43,7 @@ except ImportError as exc:
     sys.exit(f"ghostty-tray: missing Python module '{exc.name}'. "
              "Install python-dbus and python-pyqt6 for the system Python.")
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 APP_ID = "ghostty-tray"
 TITLE = "Ghostty Tray"
@@ -83,6 +83,8 @@ class Profile:
 # Built-in keys contain "/", so they can never collide with a profile file name.
 DEFAULT_PROFILE = Profile("", "Default", kind="default")
 QUICK_PROFILE = Profile("/quick-terminal", "Quick Terminal", kind="quick")
+# Ghostty's quick terminal is a Wayland layer-shell surface; it does nothing on X11.
+QUICK_TERMINAL_AVAILABLE = bool(os.environ.get("WAYLAND_DISPLAY"))
 META_RE = re.compile(r"^\s*#\s*(name|icon)\s*:\s*(.+?)\s*$", re.IGNORECASE)
 
 
@@ -105,7 +107,8 @@ def find_profiles() -> list[Profile]:
         files = [p for p in PROFILES_DIR.iterdir()
                  if p.is_file() and not p.name.startswith(".") and p.suffix in PROFILE_SUFFIXES]
     profiles = sorted((read_profile(p) for p in files), key=lambda p: p.name.lower())
-    return [DEFAULT_PROFILE, QUICK_PROFILE, *profiles]
+    builtins = [DEFAULT_PROFILE, QUICK_PROFILE] if QUICK_TERMINAL_AVAILABLE else [DEFAULT_PROFILE]
+    return [*builtins, *profiles]
 
 
 # ------------------------------------------------------------------- icons
@@ -469,8 +472,9 @@ class GhosttyTray:
         return "Toggle Quick Terminal" if p.kind == "quick" else f"Open {p.name}"
 
     def secondary_action(self) -> tuple[str, Callable[[], None]]:
-        """Middle-click: the quick terminal, unless that is already the left click."""
-        if self.selected.kind == "quick":
+        """Middle-click: the quick terminal, unless that is already the left click
+        or the session can't show it (X11)."""
+        if self.selected.kind == "quick" or not QUICK_TERMINAL_AVAILABLE:
             return "New Default Window", lambda: self.launch(DEFAULT_PROFILE)
         return "Toggle Quick Terminal", self.toggle_quick_terminal
 

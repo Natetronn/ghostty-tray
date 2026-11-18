@@ -38,7 +38,8 @@ until next login; start it again from the app launcher (*Ghostty Tray*) or with
 `systemctl --user start ghostty-tray`. Logs: `journalctl --user -u ghostty-tray`.
 
 Requirements (all in the Arch repos): `ghostty`, `python-pyqt6`, `python-dbus`.
-Wayland is needed for the quick terminal (a Ghostty limitation).
+Wayland is needed for the quick terminal (a Ghostty limitation); in an X11
+session the Quick Terminal entry is hidden and middle click opens a Default window.
 
 ## Profiles
 
