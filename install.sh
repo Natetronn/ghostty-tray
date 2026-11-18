@@ -1,20 +1,30 @@
 #!/usr/bin/env bash
-# Install ghostty-tray for the current user as a systemd user service.
+# Per-user install without root: ~/.local plus a systemd user service.
+# For a system-wide install use the AUR package (or `make install PREFIX=/usr`).
 set -euo pipefail
 cd "$(dirname "$0")"
 
-BIN="$HOME/.local/bin"
-APPS="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
-UNITS="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
-AUTOSTART="${XDG_CONFIG_HOME:-$HOME/.config}/autostart"
-PROFILES="${XDG_CONFIG_HOME:-$HOME/.config}/ghostty/profiles"
+DATA="${XDG_DATA_HOME:-$HOME/.local/share}"
+CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}"
+UNITDIR="$DATA/systemd/user"
+PROFILES="$CONFIG/ghostty/profiles"
 
-install -Dm755 ghostty-tray.py "$BIN/ghostty-tray"
-install -Dm644 ghostty-tray.desktop "$APPS/ghostty-tray.desktop"
-install -Dm644 ghostty-tray.service "$UNITS/ghostty-tray.service"
+if [ -e /usr/bin/ghostty-tray ]; then
+    echo "ghostty-tray is already installed system-wide (/usr/bin/ghostty-tray)." >&2
+    echo "Use: systemctl --user enable --now ghostty-tray.service" >&2
+    exit 1
+fi
 
-# Older versions used an autostart entry; the service replaces it.
-rm -f "$AUTOSTART/ghostty-tray.desktop"
+# Earlier versions put the unit in ~/.config/systemd/user and used autostart.
+if [ -f "$CONFIG/systemd/user/ghostty-tray.service" ]; then
+    systemctl --user disable ghostty-tray.service 2>/dev/null || true
+    rm -f "$CONFIG/systemd/user/ghostty-tray.service"
+fi
+rm -f "$CONFIG/autostart/ghostty-tray.desktop"
+
+make --no-print-directory install \
+    PREFIX="$HOME/.local" DATADIR="$DATA" USERUNITDIR="$UNITDIR"
+make --no-print-directory clean
 
 # Seed example profiles only if the user has none yet.
 mkdir -p "$PROFILES"
@@ -23,7 +33,7 @@ if [ -z "$(ls -A "$PROFILES")" ]; then
 fi
 
 # Stop a copy started outside the service, then (re)start the service.
-pkill -f "$BIN/ghostty-tray" 2>/dev/null || true
+pkill -f "$HOME/.local/bin/ghostty-tray" 2>/dev/null || true
 systemctl --user daemon-reload
 systemctl --user enable ghostty-tray.service
 systemctl --user restart ghostty-tray.service

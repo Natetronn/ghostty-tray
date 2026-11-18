@@ -19,6 +19,7 @@ top of the main config with --config-file. Optional header comments:
     # icon: utilities-terminal   theme icon name or image path for the tray
 """
 
+import argparse
 import html
 import os
 import re
@@ -31,12 +32,18 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
 
-import dbus
-import dbus.service
-from dbus.mainloop.pyqt6 import DBusQtMainLoop
-from PyQt6.QtCore import (QFileSystemWatcher, QLockFile, QProcess, QProcessEnvironment,
-                          QSettings, QSize, QTimer, QUrl)
-from PyQt6.QtGui import QDesktopServices, QGuiApplication, QIcon, QImage, QPainter
+try:
+    import dbus
+    import dbus.service
+    from dbus.mainloop.pyqt6 import DBusQtMainLoop
+    from PyQt6.QtCore import (QFileSystemWatcher, QLockFile, QProcess, QProcessEnvironment,
+                              QSettings, QSize, QTimer, QUrl)
+    from PyQt6.QtGui import QDesktopServices, QGuiApplication, QIcon, QImage, QPainter
+except ImportError as exc:
+    sys.exit(f"ghostty-tray: missing Python module '{exc.name}'. "
+             "Install python-dbus and python-pyqt6 for the system Python.")
+
+__version__ = "0.1.0"
 
 APP_ID = "ghostty-tray"
 TITLE = "Ghostty Tray"
@@ -497,8 +504,11 @@ class GhosttyTray:
 
     def update_icon(self) -> None:
         style = self.icon_style
-        if style == "monochrome":
+        if style == "monochrome" and QIcon.hasThemeIcon(MONO_ICON):
             name, pixmaps = MONO_ICON, dbus.Array(signature="(iiay)")
+        elif style == "monochrome":
+            # Icon theme lacks the symbolic icon: grayscale is the closest match.
+            name, pixmaps = "", sni_pixmaps(resolve_icon("")[1], gray=True)
         else:
             theme_name, icon = resolve_icon(self.selected.icon)
             if style == "color" and theme_name:
@@ -626,10 +636,20 @@ class GhosttyTray:
                             lambda *_: None, lambda *_: None)
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        prog="ghostty-tray",
+        description="System tray launcher for the Ghostty terminal (KDE Plasma). "
+                    f"Profiles live in {PROFILES_DIR}.")
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
+    return parser.parse_args()
+
+
 def main() -> int:
+    parse_args()
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 
-    app = QGuiApplication(sys.argv)
+    app = QGuiApplication(sys.argv[:1])
     app.setApplicationName(APP_ID)
     app.setDesktopFileName(APP_ID)
     app.setQuitOnLastWindowClosed(False)

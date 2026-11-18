@@ -4,7 +4,7 @@ PartOf=graphical-session.target
 After=graphical-session.target
 
 [Service]
-ExecStart=%h/.local/bin/ghostty-tray
+ExecStart=@BINDIR@/ghostty-tray
 # "Quit" in the menu exits cleanly and stays stopped; crashes restart.
 Restart=on-failure
 RestartSec=3

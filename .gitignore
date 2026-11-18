@@ -2,3 +2,5 @@ __pycache__/
 *.pyc
 # Sandbox config used by the VS Code "sandbox config" debug launch
 .dev-config/
+# Generated from ghostty-tray.service.in by make
+ghostty-tray.service
