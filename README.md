@@ -15,27 +15,23 @@ it can be set to *Shown when relevant*, *Always shown*, *Always hidden* or
 
 ## Install
 
-**Arch / CachyOS (AUR):**
-
-```sh
-yay -S ghostty-tray        # or paru, etc.
-systemctl --user enable --now ghostty-tray.service
-```
+**Arch / CachyOS (AUR):** install `ghostty-tray` with yay, paru or a GUI such
+as Shelly. Then open *Ghostty Tray* from the application launcher, or just log
+out and back in.
 
 **From source, per user (no root):**
 
 ```sh
-./install.sh      # installs to ~/.local, enables + starts the user service
+./install.sh      # installs to ~/.local and starts it
 ./uninstall.sh    # removes it (keeps your profiles and settings)
 ```
 
-**From source, system-wide:** `sudo make install PREFIX=/usr`, then enable the
-user service as above.
+**From source, system-wide:** `sudo make install PREFIX=/usr`
 
-It runs as the systemd user service `ghostty-tray.service`, which starts with
-the Plasma session and restarts if it crashes. **Quit** in the menu stops it
-until next login; start it again from the app launcher (*Ghostty Tray*) or with
-`systemctl --user start ghostty-tray`. Logs: `journalctl --user -u ghostty-tray`.
+It starts automatically at login; turn that off in **System Settings →
+Autostart**. **Quit** in the menu stops it until next login, or until you open
+*Ghostty Tray* from the launcher. After an upgrade a running tray restarts
+itself, so the new version is active straight away.
 
 Requirements (all in the Arch repos): `ghostty`, `python-pyqt6`, `python-dbus`.
 Wayland is needed for the quick terminal (a Ghostty limitation); in an X11

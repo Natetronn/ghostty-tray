@@ -1,30 +1,25 @@
 #!/usr/bin/env bash
-# Per-user install without root: ~/.local plus a systemd user service.
-# For a system-wide install use the AUR package (or `make install PREFIX=/usr`).
+# Per-user install without root: ~/.local plus an autostart entry.
+# For a system-wide install use the AUR package (or `sudo make install PREFIX=/usr`).
 set -euo pipefail
 cd "$(dirname "$0")"
 
 DATA="${XDG_DATA_HOME:-$HOME/.local/share}"
 CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}"
-UNITDIR="$DATA/systemd/user"
 PROFILES="$CONFIG/ghostty/profiles"
 
 if [ -e /usr/bin/ghostty-tray ]; then
     echo "ghostty-tray is already installed system-wide (/usr/bin/ghostty-tray)." >&2
-    echo "Use: systemctl --user enable --now ghostty-tray.service" >&2
     exit 1
 fi
 
-# Earlier versions put the unit in ~/.config/systemd/user and used autostart.
-if [ -f "$CONFIG/systemd/user/ghostty-tray.service" ]; then
-    systemctl --user disable ghostty-tray.service 2>/dev/null || true
-    rm -f "$CONFIG/systemd/user/ghostty-tray.service"
-fi
-rm -f "$CONFIG/autostart/ghostty-tray.desktop"
+# Versions before 0.1.2 ran as a systemd user service; autostart replaces it.
+systemctl --user disable --now ghostty-tray.service 2>/dev/null || true
+rm -f "$CONFIG/systemd/user/ghostty-tray.service" "$DATA/systemd/user/ghostty-tray.service"
+systemctl --user daemon-reload 2>/dev/null || true
 
 make --no-print-directory install \
-    PREFIX="$HOME/.local" DATADIR="$DATA" USERUNITDIR="$UNITDIR"
-make --no-print-directory clean
+    PREFIX="$HOME/.local" DATADIR="$DATA" AUTOSTARTDIR="$CONFIG/autostart"
 
 # Seed example profiles only if the user has none yet.
 mkdir -p "$PROFILES"
@@ -32,9 +27,8 @@ if [ -z "$(ls -A "$PROFILES")" ]; then
     cp examples/profiles/* "$PROFILES/"
 fi
 
-# Stop a copy started outside the service, then (re)start the service.
-pkill -f "$HOME/.local/bin/ghostty-tray" 2>/dev/null || true
-systemctl --user daemon-reload
-systemctl --user enable ghostty-tray.service
-systemctl --user restart ghostty-tray.service
-systemctl --user --no-pager --lines=0 status ghostty-tray.service
+# Start it now (a running copy re-execs itself when its file is replaced).
+if ! pgrep -f "$HOME/.local/bin/ghostty-tray" >/dev/null; then
+    setsid -f "$HOME/.local/bin/ghostty-tray" >/dev/null 2>&1
+fi
+echo "Installed. Ghostty Tray is running and will start at every login."

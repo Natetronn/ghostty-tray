@@ -43,7 +43,7 @@ except ImportError as exc:
     sys.exit(f"ghostty-tray: missing Python module '{exc.name}'. "
              "Install python-dbus and python-pyqt6 for the system Python.")
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 
 APP_ID = "ghostty-tray"
 TITLE = "Ghostty Tray"
@@ -610,7 +610,7 @@ class GhosttyTray:
             return
         cmd = [self.ghostty, *args]
         if self.systemd_run:
-            # Own scope, so the window survives the tray (or its service) stopping.
+            # Own scope, so the window survives the tray stopping.
             cmd = [self.systemd_run, "--user", "--scope", "--collect", "--quiet",
                    "--slice=app.slice", f"--unit=app-ghostty-tray-{uuid.uuid4().hex[:8]}", *cmd]
 
@@ -640,6 +640,74 @@ class GhosttyTray:
                             lambda *_: None, lambda *_: None)
 
 
+class SelfRestarter:
+    """Re-exec this program when its file is replaced, e.g. by a package upgrade,
+    so users never keep running the old version until their next login."""
+
+    PACMAN_LOCK = Path("/var/lib/pacman/db.lck")
+    MAX_WAIT = 600  # seconds to wait for a package transaction to finish
+
+    def __init__(self, app: QGuiApplication, lock: QLockFile):
+        self.app = app
+        self.lock = lock
+        self.path = Path(os.path.realpath(__file__))
+        self.original = self._stat()
+        self.pending = None
+        self.waited = 0
+        self.watcher = QFileSystemWatcher([str(self.path)])
+        self.watcher.fileChanged.connect(self.on_changed)
+        self.timer = QTimer(interval=1000)
+        self.timer.timeout.connect(self.check)
+
+    def _stat(self):
+        try:
+            st = self.path.stat()
+        except OSError:
+            return None
+        return st.st_ino, st.st_mtime_ns, st.st_size
+
+    def on_changed(self, _path: str) -> None:
+        if not self.timer.isActive():
+            self.waited, self.pending = 0, None
+            self.timer.start()
+
+    def check(self) -> None:
+        self.waited += 1
+        if self.PACMAN_LOCK.exists() and self.waited < self.MAX_WAIT:
+            return  # package transaction (maybe also upgrading our deps) still running
+        current = self._stat()
+        if current is None:
+            if self.waited >= 3:  # program was uninstalled
+                self.timer.stop()
+                print("ghostty-tray: program file removed, exiting", file=sys.stderr, flush=True)
+                self.app.quit()
+            return
+        if current == self.original:  # touched but not changed
+            self.timer.stop()
+            self.watcher.addPath(str(self.path))
+            return
+        if current != self.pending:  # wait until the file has been stable for a second
+            self.pending = current
+            return
+        self.timer.stop()
+        print("ghostty-tray: program updated, restarting", file=sys.stderr, flush=True)
+        self.lock.unlock()  # the new process image takes the lock again
+        if os.access(self.path, os.X_OK):  # keeps the process name "ghostty-tray"
+            os.execv(self.path, [str(self.path), *sys.argv[1:]])
+        os.execv(sys.executable, [sys.executable, str(self.path), *sys.argv[1:]])
+
+
+def remove_legacy_service_link() -> None:
+    """Versions before 0.1.2 ran as a systemd user service. Once the package no
+    longer ships that unit, its 'enabled' symlink dangles; remove it quietly."""
+    link = CONFIG_HOME / "systemd/user/graphical-session.target.wants/ghostty-tray.service"
+    if link.is_symlink() and not link.exists():
+        try:
+            link.unlink()
+        except OSError:
+            pass
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="ghostty-tray",
@@ -664,9 +732,13 @@ def main() -> int:
         print("ghostty-tray is already running.", file=sys.stderr)
         return 0
 
+    remove_legacy_service_link()
     DBusQtMainLoop(set_as_default=True)
     bus = dbus.SessionBus()
     _tray = GhosttyTray(app, bus)
+    # Not under a debugger: re-exec would detach it.
+    _restarter = None if "debugpy" in sys.modules else SelfRestarter(app, lock)
+    print(f"ghostty-tray {__version__} started", file=sys.stderr, flush=True)
     return app.exec()
 
 

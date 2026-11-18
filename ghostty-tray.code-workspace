@@ -15,7 +15,6 @@
 			"editor.defaultFormatter": "foxundermoon.shell-format"
 		},
 		"files.associations": {
-			"*.service": "systemd-unit-file",
 			"**/profiles/*": "properties"
 		},
 		"files.exclude": {
@@ -28,7 +27,6 @@
 			"ms-python.vscode-pylance",
 			"ms-python.debugpy",
 			"ms-python.black-formatter",
-			"coolbear.systemd-unit-file",
 			"foxundermoon.shell-format"
 		]
 	},
@@ -53,7 +51,7 @@
 				"program": "${workspaceFolder}/ghostty-tray.py",
 				"python": "/usr/bin/python3",
 				"console": "integratedTerminal",
-				"preLaunchTask": "Service: stop"
+				"preLaunchTask": "Tray: stop"
 			}
 		]
 	},
@@ -61,42 +59,43 @@
 		"version": "2.0.0",
 		"tasks": [
 			{
-				"label": "Install (and restart service)",
+				"label": "Install (per user)",
 				"type": "shell",
 				"command": "./install.sh",
 				"problemMatcher": []
 			},
 			{
-				"label": "Uninstall",
+				"label": "Uninstall (per user)",
 				"type": "shell",
 				"command": "./uninstall.sh",
 				"problemMatcher": []
 			},
 			{
-				"label": "Service: restart",
+				"label": "Tray: restart",
 				"type": "shell",
-				"command": "systemctl --user restart ghostty-tray.service && systemctl --user --no-pager status ghostty-tray.service",
-				"problemMatcher": []
-			},
-			{
-				"label": "Service: stop",
-				"type": "shell",
-				// The tray is single-instance, so a debug run needs the service stopped.
-				"command": "systemctl --user stop ghostty-tray.service 2>/dev/null; true",
+				"command": "pkill -f 'bin/ghostty-tray'; sleep 0.5; setsid -f ghostty-tray >/dev/null 2>&1",
 				"presentation": { "reveal": "silent" },
 				"problemMatcher": []
 			},
 			{
-				"label": "Service: follow logs",
+				"label": "Tray: stop",
 				"type": "shell",
-				"command": "journalctl --user -u ghostty-tray.service -f -n 50",
+				// The tray is single-instance, so a debug run needs the installed one stopped.
+				"command": "pkill -f 'bin/ghostty-tray'; true",
+				"presentation": { "reveal": "silent" },
+				"problemMatcher": []
+			},
+			{
+				"label": "Tray: follow logs",
+				"type": "shell",
+				"command": "journalctl --user -f -n 50 -t ghostty-tray",
 				"isBackground": true,
 				"problemMatcher": []
 			},
 			{
 				"label": "Dev: prepare sandbox",
 				"type": "shell",
-				"command": "systemctl --user stop ghostty-tray.service 2>/dev/null; mkdir -p .dev-config/ghostty/profiles && cp -n examples/profiles/* .dev-config/ghostty/profiles/",
+				"command": "pkill -f 'bin/ghostty-tray'; mkdir -p .dev-config/ghostty/profiles && cp -n examples/profiles/* .dev-config/ghostty/profiles/",
 				"presentation": { "reveal": "silent" },
 				"problemMatcher": []
 			},
