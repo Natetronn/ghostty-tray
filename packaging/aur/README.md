@@ -13,3 +13,6 @@ Release steps:
    makepkg --printsrcinfo > .SRCINFO
    ```
 3. Copy `PKGBUILD`, `ghostty-tray.install` and `.SRCINFO` into the AUR repo, commit, push.
+
+A fix to the packaging only (PKGBUILD or install script, same upstream
+version): bump `pkgrel` instead, regenerate `.SRCINFO`, and push.

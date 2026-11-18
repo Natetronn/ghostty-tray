@@ -697,17 +697,6 @@ class SelfRestarter:
         os.execv(sys.executable, [sys.executable, str(self.path), *sys.argv[1:]])
 
 
-def remove_legacy_service_link() -> None:
-    """Versions before 0.1.2 ran as a systemd user service. Once the package no
-    longer ships that unit, its 'enabled' symlink dangles; remove it quietly."""
-    link = CONFIG_HOME / "systemd/user/graphical-session.target.wants/ghostty-tray.service"
-    if link.is_symlink() and not link.exists():
-        try:
-            link.unlink()
-        except OSError:
-            pass
-
-
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="ghostty-tray",
@@ -732,7 +721,6 @@ def main() -> int:
         print("ghostty-tray is already running.", file=sys.stderr)
         return 0
 
-    remove_legacy_service_link()
     DBusQtMainLoop(set_as_default=True)
     bus = dbus.SessionBus()
     _tray = GhosttyTray(app, bus)

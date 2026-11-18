@@ -13,11 +13,6 @@ if [ -e /usr/bin/ghostty-tray ]; then
     exit 1
 fi
 
-# Versions before 0.1.2 ran as a systemd user service; autostart replaces it.
-systemctl --user disable --now ghostty-tray.service 2>/dev/null || true
-rm -f "$CONFIG/systemd/user/ghostty-tray.service" "$DATA/systemd/user/ghostty-tray.service"
-systemctl --user daemon-reload 2>/dev/null || true
-
 make --no-print-directory install \
     PREFIX="$HOME/.local" DATADIR="$DATA" AUTOSTARTDIR="$CONFIG/autostart"
 
