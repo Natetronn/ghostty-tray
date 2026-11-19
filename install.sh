@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Per-user install without root: ~/.local plus an autostart entry.
+# Per-user install without root, into ~/.local. On its first run the tray adds
+# itself to ~/.config/autostart.
 # For a system-wide install use the AUR package (or `sudo make install PREFIX=/usr`).
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -13,8 +14,7 @@ if [ -e /usr/bin/ghostty-tray ]; then
     exit 1
 fi
 
-make --no-print-directory install \
-    PREFIX="$HOME/.local" DATADIR="$DATA" AUTOSTARTDIR="$CONFIG/autostart"
+make --no-print-directory install PREFIX="$HOME/.local" DATADIR="$DATA"
 
 # Seed example profiles only if the user has none yet.
 mkdir -p "$PROFILES"

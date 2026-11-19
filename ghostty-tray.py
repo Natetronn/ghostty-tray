@@ -5,7 +5,7 @@ Left click    open the selected profile (or toggle the quick terminal)
 Middle click  toggle the quick terminal (or open a Default window when the
               quick terminal is already the left-click action)
 Scroll        switch the selected profile
-Right click   menu: profiles, open-once, icon style, quit
+Right click   menu: profiles, open-once, icon style, start at login, quit
 
 The tray icon talks to Plasma directly over D-Bus (StatusNotifierItem +
 com.canonical.dbusmenu) instead of using QSystemTrayIcon, because Qt ignores
@@ -43,7 +43,7 @@ except ImportError as exc:
     sys.exit(f"ghostty-tray: missing Python module '{exc.name}'. "
              "Install python-dbus and python-pyqt6 for the system Python.")
 
-__version__ = "0.1.2"
+__version__ = "0.1.3"
 
 APP_ID = "ghostty-tray"
 TITLE = "Ghostty Tray"
@@ -51,6 +51,8 @@ APP_ICON = "com.mitchellh.ghostty"
 MONO_ICON = "utilities-terminal-symbolic"
 CONFIG_HOME = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
 PROFILES_DIR = CONFIG_HOME / "ghostty" / "profiles"
+# Per-user, so it shows in System Settings > Autostart (which lists only this folder).
+AUTOSTART_FILE = CONFIG_HOME / "autostart" / f"{APP_ID}.desktop"
 PROFILE_SUFFIXES = {"", ".conf", ".config", ".ghostty"}
 ICON_STYLES = {"color": "Color", "grayscale": "Grayscale", "monochrome": "Monochrome (follows theme)"}
 PIXMAP_SIZES = (16, 22, 24, 32, 44, 48, 64, 96, 128)
@@ -109,6 +111,54 @@ def find_profiles() -> list[Profile]:
     profiles = sorted((read_profile(p) for p in files), key=lambda p: p.name.lower())
     builtins = [DEFAULT_PROFILE, QUICK_PROFILE] if QUICK_TERMINAL_AVAILABLE else [DEFAULT_PROFILE]
     return [*builtins, *profiles]
+
+
+# --------------------------------------------------------------- autostart
+
+def program_path() -> Path:
+    return Path(os.path.realpath(__file__))
+
+
+def autostart_enabled() -> bool:
+    try:
+        text = AUTOSTART_FILE.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return False
+    return not re.search(r"^\s*Hidden\s*=\s*true\s*$", text, re.MULTILINE | re.IGNORECASE)
+
+
+def set_autostart(enabled: bool) -> None:
+    if not enabled:
+        AUTOSTART_FILE.unlink(missing_ok=True)
+        return
+    exe = program_path()
+    AUTOSTART_FILE.parent.mkdir(parents=True, exist_ok=True)
+    # TryExec: once the program is uninstalled, the session skips this entry.
+    AUTOSTART_FILE.write_text(
+        "[Desktop Entry]\n"
+        "Type=Application\n"
+        f"Name={TITLE}\n"
+        "Comment=System tray launcher for Ghostty with profiles\n"
+        f'Exec="{exe}"\n'
+        f"TryExec={exe}\n"
+        f"Icon={APP_ICON}\n"
+        "Terminal=false\n", encoding="utf-8")
+
+
+def seed_autostart(settings: QSettings) -> None:
+    """Turn on start at login the first time an installed copy runs. Only once, so
+    removing it (in the menu or System Settings) is respected."""
+    if settings.value("autostart_seeded", False, type=bool):
+        return
+    if program_path().name != APP_ID:  # run from a source checkout (ghostty-tray.py)
+        return
+    try:
+        if not AUTOSTART_FILE.exists():
+            set_autostart(True)
+    except OSError as exc:
+        print(f"ghostty-tray: could not add the autostart entry: {exc}", file=sys.stderr)
+        return
+    settings.setValue("autostart_seeded", True)
 
 
 # ------------------------------------------------------------------- icons
@@ -299,6 +349,11 @@ class MenuBuilder:
         props.update({"toggle-type": "radio", "toggle-state": dbus.Int32(1 if checked else 0)})
         self._add(props, action)
 
+    def check(self, text, checked, action, icon=""):
+        props = self._label(text, icon)
+        props.update({"toggle-type": "checkmark", "toggle-state": dbus.Int32(1 if checked else 0)})
+        self._add(props, action)
+
     def header(self, text):
         self._add({**self._label(text), "enabled": False})
 
@@ -426,7 +481,11 @@ class GhosttyTray:
         self.item = StatusNotifierItem(bus, self)
         self.menu = DBusMenu(bus)
 
+        seed_autostart(self.settings)
         PROFILES_DIR.mkdir(parents=True, exist_ok=True)
+        AUTOSTART_FILE.parent.mkdir(parents=True, exist_ok=True)
+        # Watches the profiles (menu entries) and the autostart folder (Start at Login,
+        # which System Settings > Autostart can change too).
         self.watcher = QFileSystemWatcher()
         self.watcher.directoryChanged.connect(self.schedule_reload)
         self.watcher.fileChanged.connect(self.schedule_reload)
@@ -495,9 +554,13 @@ class GhosttyTray:
         self.profiles = find_profiles()
         if files := self.watcher.files():
             self.watcher.removePaths(files)
-        if PROFILES_DIR.is_dir() and not self.watcher.directories():
-            self.watcher.addPath(str(PROFILES_DIR))
+        watched = set(self.watcher.directories())
+        for folder in (PROFILES_DIR, AUTOSTART_FILE.parent):
+            if folder.is_dir() and str(folder) not in watched:
+                self.watcher.addPath(str(folder))
         paths = [str(p.path) for p in self.profiles if p.path]
+        if AUTOSTART_FILE.is_file():
+            paths.append(str(AUTOSTART_FILE))
         if paths:
             self.watcher.addPaths(paths)
         self.refresh()
@@ -547,6 +610,7 @@ class GhosttyTray:
         with m.submenu("Tray Icon", icon="preferences-desktop-icons"):
             for style, label in ICON_STYLES.items():
                 m.radio(label, style == self.icon_style, lambda s=style: self.set_icon_style(s))
+        m.check("Start at Login", autostart_enabled(), self.toggle_autostart)
         m.item("Open Profiles Folder", self.open_profiles_folder, icon="folder-open")
         m.separator()
         m.item("Quit", self.app.quit, icon="application-exit")
@@ -628,6 +692,13 @@ class GhosttyTray:
         ok, _pid = proc.startDetached()
         if not ok:
             self.notify("Failed to start Ghostty.")
+
+    def toggle_autostart(self) -> None:
+        try:
+            set_autostart(not autostart_enabled())
+        except OSError as exc:
+            self.notify(f"Could not change the autostart entry: {exc}")
+        self.reload()  # also re-watches the folder if it was deleted and recreated
 
     def open_profiles_folder(self) -> None:
         QDesktopServices.openUrl(QUrl.fromLocalFile(str(PROFILES_DIR)))

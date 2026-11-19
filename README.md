@@ -7,7 +7,7 @@ A KDE Plasma system tray icon for the [Ghostty](https://ghostty.org) terminal.
 | Left click   | Open the selected profile, or toggle the quick terminal          |
 | Middle click | Toggle the quick terminal (or open a Default window if the quick terminal is the left-click action) |
 | Scroll       | Switch the selected profile                                      |
-| Right click  | Menu: pick profile, open once with another, icon style, quit     |
+| Right click  | Menu: pick profile, open once with another, icon style, start at login, quit |
 
 The icon appears in **System Tray Settings → Entries** as *Ghostty Tray*, where
 it can be set to *Shown when relevant*, *Always shown*, *Always hidden* or
@@ -16,8 +16,8 @@ it can be set to *Shown when relevant*, *Always shown*, *Always hidden* or
 ## Install
 
 **Arch / CachyOS (AUR):** install `ghostty-tray` with yay, paru or a GUI such
-as Shelly. Then open *Ghostty Tray* from the application launcher, or just log
-out and back in.
+as Shelly. Then open *Ghostty Tray* once from the application launcher; from
+then on it starts at login.
 
 **From source, per user (no root):**
 
@@ -28,10 +28,12 @@ out and back in.
 
 **From source, system-wide:** `sudo make install PREFIX=/usr`
 
-It starts automatically at login; turn that off in **System Settings →
-Autostart**. **Quit** in the menu stops it until next login, or until you open
-*Ghostty Tray* from the launcher. After an upgrade a running tray restarts
-itself, so the new version is active straight away.
+The first time it runs, it adds itself to `~/.config/autostart`, so it starts
+at every login. Turn that off with **Start at Login** in its menu, or remove it
+in **System Settings → Autostart**; either way it stays off. **Quit** in the
+menu stops it until next login, or until you open *Ghostty Tray* from the
+launcher. After an upgrade a running tray restarts itself, so the new version
+is active straight away.
 
 Requirements (all in the Arch repos): `ghostty`, `python-pyqt6`, `python-dbus`.
 Wayland is needed for the quick terminal (a Ghostty limitation); in an X11
@@ -73,7 +75,8 @@ the theme's symbolic terminal icon and follows the panel's light/dark colors.
 
 ## Settings
 
-Stored in `~/.config/ghostty-tray/ghostty-tray.conf` (selected profile and icon style).
+Stored in `~/.config/ghostty-tray/ghostty-tray.conf` (selected profile, icon style, and
+whether the autostart entry has been added once).
 
 ## How it works
 

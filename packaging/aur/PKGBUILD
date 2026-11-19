@@ -1,8 +1,8 @@
 # Maintainer: Nathan Doyle <582149+Natetronn@users.noreply.github.com>
 
 pkgname=ghostty-tray
-pkgver=0.1.2
-pkgrel=2
+pkgver=0.1.3
+pkgrel=1
 pkgdesc="KDE Plasma system tray launcher for Ghostty with profiles and quick terminal toggle"
 arch=('any')
 url="https://github.com/Natetronn/ghostty-tray"
