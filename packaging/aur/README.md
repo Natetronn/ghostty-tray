@@ -1,7 +1,8 @@
 # AUR packaging
 
-These files are the contents of the separate AUR git repo
-(`ssh://aur@aur.archlinux.org/ghostty-tray.git`).
+`PKGBUILD`, `ghostty-tray.install` and `.SRCINFO` are the contents of the AUR
+repo (`ssh://aur@aur.archlinux.org/ghostty-tray.git`). They are edited here;
+`push.sh` publishes them, so no separate AUR clone is needed.
 
 Release steps:
 
@@ -12,7 +13,10 @@ Release steps:
    makepkg -si                        # test build + install
    makepkg --printsrcinfo > .SRCINFO
    ```
-3. Copy `PKGBUILD`, `ghostty-tray.install` and `.SRCINFO` into the AUR repo, commit, push.
+3. Commit and push these files to GitHub.
+4. `./push.sh`: clones the AUR repo into a temporary folder, copies the three
+   files in, commits "Update to X.Y.Z-N", pushes, and deletes the folder. It
+   needs your AUR SSH key, so run it from your own terminal.
 
 A fix to the packaging only (PKGBUILD or install script, same upstream
-version): bump `pkgrel` instead, regenerate `.SRCINFO`, and push.
+version): bump `pkgrel` instead, regenerate `.SRCINFO`, then steps 3 and 4.
