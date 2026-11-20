@@ -5,7 +5,7 @@ Left click    open the selected profile (or toggle the quick terminal)
 Middle click  toggle the quick terminal (or open a Default window when the
               quick terminal is already the left-click action)
 Scroll        switch the selected profile
-Right click   menu: profiles, open-once, icon style, start at login, quit
+Right click   menu: profiles, open-once, icon style, start at login, profiles folder, quit
 
 The tray icon talks to Plasma directly over D-Bus (StatusNotifierItem +
 com.canonical.dbusmenu) instead of using QSystemTrayIcon, because Qt ignores
@@ -43,7 +43,7 @@ except ImportError as exc:
     sys.exit(f"ghostty-tray: missing Python module '{exc.name}'. "
              "Install python-dbus and python-pyqt6 for the system Python.")
 
-__version__ = "0.1.3"
+__version__ = "0.1.4"
 
 APP_ID = "ghostty-tray"
 TITLE = "Ghostty Tray"

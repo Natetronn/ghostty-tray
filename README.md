@@ -7,7 +7,7 @@ A KDE Plasma system tray icon for the [Ghostty](https://ghostty.org) terminal.
 | Left click   | Open the selected profile, or toggle the quick terminal          |
 | Middle click | Toggle the quick terminal (or open a Default window if the quick terminal is the left-click action) |
 | Scroll       | Switch the selected profile                                      |
-| Right click  | Menu: pick profile, open once with another, icon style, start at login, quit |
+| Right click  | Menu: pick profile, open once with another, icon style, start at login, profiles folder, quit |
 
 The icon appears in **System Tray Settings → Entries** as *Ghostty Tray*, where
 it can be set to *Shown when relevant*, *Always shown*, *Always hidden* or

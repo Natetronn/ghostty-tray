@@ -7,5 +7,5 @@ Exec=ghostty-tray
 Icon=com.mitchellh.ghostty
 Terminal=false
 StartupNotify=false
-Categories=System;TerminalEmulator;
+Categories=Utility;
 Keywords=ghostty;tray;terminal;profile;
